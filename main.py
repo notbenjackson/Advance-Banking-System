@@ -1,6 +1,6 @@
 import streamlit as st
 from pages.dashboard import render_dashboard
-from pages.transactions import render_transactions
+from pages.transaction import render_transactions
 from pages.account_management import render_account_management
 from pages.support_tickets import render_support_tickets
 from components.sidebar import create_sidebar
