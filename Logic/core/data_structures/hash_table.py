@@ -1,149 +1,143 @@
-class BankingHashTable:
+class HashTable:
     def __init__(self, size=100):
         """
         Initialize the hash table with a given size.
         
         Args:
-            size (int): The size of the hash table. Default is 100.
+            size (int): The size of the hash table's internal list. Defaults to 100.
         """
+        # Use a list of lists to handle collision via chaining
         self.size = size
-        # Create a list of 'size' elements, each initialized to None
-        self.table = [None] * size
+        self.table = [[] for _ in range(self.size)]
     
     def _hash_function(self, key):
         """
-        Simple hash function to convert a key to an index.
+        Generate a hash value for the given key.
         
         Args:
-            key (str): The key to be hashed (typically a username or account number)
+            key: The key to be hashed (can be string, integer, etc.)
         
         Returns:
-            int: The index in the hash table
+            int: A hash index within the table's size
         """
-        # Sum the ASCII values of characters and use modulo to fit within table size
-        return sum(ord(char) for char in str(key)) % self.size
+        # Use built-in hash function and ensure it's within table size
+        return hash(key) % self.size
     
     def insert(self, key, value):
         """
         Insert a key-value pair into the hash table.
         
         Args:
-            key (str): The key for the entry
-            value (dict): The value to be stored (typically user account information)
+            key: The key to insert
+            value: The value associated with the key
         """
-        # Calculate the index using hash function
+        # Calculate the hash index
         index = self._hash_function(key)
         
-        # Handle collision using simple linear probing
-        while self.table[index] is not None:
-            # If the key already exists, update the value
-            if self.table[index][0] == key:
-                self.table[index] = (key, value)
+        # Check if key already exists
+        for item in self.table[index]:
+            if item[0] == key:
+                # Update existing key's value
+                item[1] = value
                 return
-            
-            # Move to next index (wrap around if needed)
-            index = (index + 1) % self.size
         
-        # Insert the new key-value pair
-        self.table[index] = (key, value)
+        # If key doesn't exist, append new key-value pair
+        self.table[index].append([key, value])
     
     def get(self, key):
         """
-        Retrieve a value by its key.
+        Retrieve the value associated with a given key.
         
         Args:
-            key (str): The key to search for
+            key: The key to look up
         
         Returns:
-            The value associated with the key, or None if not found
+            The value associated with the key, or None if key not found
+        
+        Raises:
+            KeyError: If the key is not found in the hash table
         """
-        # Calculate the initial index
+        # Calculate the hash index
         index = self._hash_function(key)
         
-        # Search for the key, handling potential collisions
-        original_index = index
-        while self.table[index] is not None:
-            # Check if the current entry matches the key
-            if self.table[index][0] == key:
-                return self.table[index][1]
-            
-            # Move to next index
-            index = (index + 1) % self.size
-            
-            # Stop if we've checked the entire table
-            if index == original_index:
-                break
+        # Search for the key in the bucket
+        for item in self.table[index]:
+            if item[0] == key:
+                return item[1]
         
         # Key not found
-        return None
+        raise KeyError(f"Key '{key}' not found in hash table")
     
     def remove(self, key):
         """
         Remove a key-value pair from the hash table.
         
         Args:
-            key (str): The key to remove
+            key: The key to remove
         
-        Returns:
-            bool: True if removed, False if not found
+        Raises:
+            KeyError: If the key is not found in the hash table
         """
-        # Calculate the initial index
+        # Calculate the hash index
         index = self._hash_function(key)
         
-        # Search for the key, handling potential collisions
-        original_index = index
-        while self.table[index] is not None:
-            # Check if the current entry matches the key
-            if self.table[index][0] == key:
-                # Remove the entry
-                self.table[index] = None
-                return True
-            
-            # Move to next index
-            index = (index + 1) % self.size
-            
-            # Stop if we've checked the entire table
-            if index == original_index:
-                break
+        # Iterate through items in the bucket
+        for i, item in enumerate(self.table[index]):
+            if item[0] == key:
+                # Remove the item if key is found
+                del self.table[index][i]
+                return
         
         # Key not found
-        return False
+        raise KeyError(f"Key '{key}' not found in hash table")
+    
+    def __str__(self):
+        """
+        Provide a string representation of the hash table.
+        
+        Returns:
+            str: A string showing the contents of the hash table
+        """
+        output = []
+        for i, bucket in enumerate(self.table):
+            if bucket:
+                output.append(f"Bucket {i}: {bucket}")
+        return "\n".join(output) if output else "Empty Hash Table"
 
 # Example usage
 def main():
-    # Create a hash table for bank accounts
-    account_database = BankingHashTable()
+    # Create a hash table
+    ht = HashTable(size=10)
     
-    # Insert some sample account information
-    account_database.insert("john_doe", {
-        "account_number": "1234567890",
-        "balance": 5000.00,
-        "email": "john.doe@example.com"
-    })
+    # Insert some key-value pairs
+    ht.insert("name", "Alice")
+    ht.insert("age", 30)
+    ht.insert("city", "New York")
     
-    account_database.insert("jane_smith", {
-        "account_number": "0987654321",
-        "balance": 7500.50,
-        "email": "jane.smith@example.com"
-    })
+    # Print the hash table
+    print("Hash Table Contents:")
+    print(ht)
     
-    # Retrieve account information
-    john_account = account_database.get("john_doe")
-    print("John's Account:", john_account)
+    # Retrieve values
+    print("\nRetrieving values:")
+    print("Name:", ht.get("name"))
+    print("Age:", ht.get("age"))
     
-    # Update an account
-    account_database.insert("john_doe", {
-        "account_number": "1234567890",
-        "balance": 5500.00,
-        "email": "john.doe@example.com"
-    })
+    # Update a value
+    ht.insert("age", 31)
+    print("\nAfter updating age:")
+    print("New Age:", ht.get("age"))
     
-    # Remove an account
-    account_database.remove("jane_smith")
+    # Remove a key
+    ht.remove("city")
+    print("\nAfter removing city:")
+    print(ht)
     
-    # Try to retrieve a removed account
-    jane_account = account_database.get("jane_smith")
-    print("Jane's Account:", jane_account)  # Should print None
+    # Demonstrate error handling
+    try:
+        ht.get("city")
+    except KeyError as e:
+        print("\nError (as expected):", e)
 
 if __name__ == "__main__":
     main()
