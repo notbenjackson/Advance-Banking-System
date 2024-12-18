@@ -5,7 +5,6 @@ from typing import Optional
 from src.core.user import User
 from src.data_structures.avl_tree import AVLTree
 from src.data_structures.hash_table import HashTable
-from src.algorithms.search_algorithms import SearchAlgorithms
 
 class AuthenticationService:
     def __init__(self):
@@ -40,8 +39,12 @@ class AuthenticationService:
         """
         User registration with advanced security
         """
+        # Normalize username to lowercase for consistency
+        username = username.lower()
+
         # Check if username already exists
         if self.find_user(username):
+            print(f"Debug: Username '{username}' already exists.")
             return None
 
         # Generate cryptographically secure salt
@@ -63,32 +66,44 @@ class AuthenticationService:
         self.user_tree.insert_key(username, new_user)
         self.user_cache.insert(username, new_user)
 
+        print(f"Debug: User '{username}' registered successfully.")
         return new_user
 
     def authenticate(self, username: str, password: str) -> Optional[User]:
         """
         Multi-strategy user authentication
         """
+        username = username.lower()  # Normalize username
+
+        print(f"Debug: Authenticating username '{username}'")
+
         # Check cache first
         if self.user_cache.contains(username):
             user = self.user_cache.get(username)
+            print(f"Debug: User '{username}' found in cache.")
         else:
             # Fallback to tree search
             user = self.find_user(username)
+            if user:
+                print(f"Debug: User '{username}' found in AVL tree.")
+            else:
+                print(f"Debug: User '{username}' not found.")
+                return None
 
         # Verify password
-        if user and self.verify_password(password, user.password_hash, user.salt):
-            # Update last login
-            from datetime import datetime
-            user.last_login = datetime.now().isoformat()
+        if self.verify_password(password, user.password_hash, user.salt):
+            print(f"Debug: Password verified for user '{username}'.")
             return user
 
+        print(f"Debug: Password verification failed for user '{username}'.")
         return None
 
     def find_user(self, username: str) -> Optional[User]:
         """
         Find user using multiple search strategies
         """
+        username = username.lower()  # Normalize username
+
         # Hash Table lookup
         if self.user_cache.contains(username):
             return self.user_cache.get(username)
@@ -106,10 +121,13 @@ class AuthenticationService:
         """
         Secure password change process
         """
+        username = username.lower()  # Normalize username
+
         # Authenticate current user
         user = self.authenticate(username, old_password)
         
         if not user:
+            print(f"Debug: Authentication failed for password change for user '{username}'.")
             return False
 
         # Generate new salt
@@ -126,6 +144,7 @@ class AuthenticationService:
         self.user_tree.update_key(username, user)
         self.user_cache.insert(username, user)
 
+        print(f"Debug: Password changed successfully for user '{username}'.")
         return True
 
     def list_users_by_role(self, role: str) -> list:
@@ -145,23 +164,33 @@ class AuthenticationService:
             collect_users(node.right)
 
         collect_users(self.user_tree.root)
+        print(f"Debug: Found {len(matching_users)} users with role '{role}'.")
         return matching_users
 
-    def two_factor_authentication(
-        self, 
-        username: str, 
-        password: str, 
-        additional_factor: str
-    ) -> bool:
+    def save_users_to_file(self, file_path="users.json"):
         """
-        Two-factor authentication implementation
+        Save users to a file for persistence
         """
-        # Standard authentication
-        user = self.authenticate(username, password)
-        
-        if not user:
-            return False
+        import json
+        users = {
+            username: user.to_dict() for username, user in self.user_cache.get_all_items()
+        }
+        with open(file_path, "w") as f:
+            json.dump(users, f)
+        print("Debug: Users saved to file.")
 
-        # Additional verification logic
-        # This could be extended to email, SMS, or token-based verification
-        return len(additional_factor) > 6
+    def load_users_from_file(self, file_path="users.json"):
+        """
+        Load users from a file for persistence
+        """
+        import json
+        try:
+            with open(file_path, "r") as f:
+                users = json.load(f)
+            for username, user_data in users.items():
+                user = User.from_dict(user_data)
+                self.user_cache.insert(username, user)
+                self.user_tree.insert_key(username, user)
+            print("Debug: Users loaded from file.")
+        except FileNotFoundError:
+            print("Debug: No user data file found.")
