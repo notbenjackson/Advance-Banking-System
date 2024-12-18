@@ -1,51 +1,81 @@
 import streamlit as st
-from pages.dashboard import render_dashboard
-from pages.transaction import render_transactions
-from pages.account_management import render_account_management
-from pages.support_tickets import render_support_tickets
-from components.sidebar import create_sidebar
-from components.authentication import authenticate_user
+from src.services.authentication_service import AuthenticationService
+from src.services.registration_service import RegistrationService
+
+class BankingApp:
+    def __init__(self):
+        # Configure page settings
+        st.set_page_config(
+            page_title="Banking System", 
+            page_icon=":bank:", 
+            layout="wide"
+        )
+
+        # Initialize services
+        self.auth_service = AuthenticationService()
+        self.registration_service = RegistrationService(self.auth_service)
+
+    def run(self):
+        # Import pages here to avoid circular imports
+        from frontend.login_page import render_login_page
+        from frontend.registration_page import render_registration_page
+        from frontend.dashboard import dashboard
+        from frontend.transaction_page import transaction_page
+        from frontend.account_management import account_management
+
+        # Initialize session state
+        if 'logged_in' not in st.session_state:
+            st.session_state['logged_in'] = False
+
+        if not st.session_state['logged_in']:
+            # Show login or registration page
+            page = st.sidebar.selectbox(
+                "Navigation", 
+                ["Login", "Register"]
+            )
+            
+            if page == "Login":
+                render_login_page(self.auth_service)
+            else:
+                render_registration_page(self.registration_service)
+        else:
+            # Logged-in user navigation
+            menu = st.sidebar.radio(
+                "Menu", 
+                [
+                    "Dashboard", 
+                    "Transactions", 
+                    "Account Management", 
+                    "Logout"
+                ]
+            )
+
+            # Render appropriate page based on menu selection
+            if menu == "Dashboard":
+                dashboard()
+            elif menu == "Transactions":
+                transaction_page()
+            elif menu == "Account Management":
+                account_management()
+            elif menu == "Logout":
+                self._logout()
+
+    def _logout(self):
+        """
+        Logout user and reset session state
+        """
+        st.session_state['logged_in'] = False
+        st.experimental_rerun()
 
 def main():
-    # Set page configuration
-    st.set_page_config(page_title="Advanced Banking System", page_icon=":bank:", layout="wide")
-    
-    # Authentication
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    
-    # Login Page
-    if not st.session_state.authenticated:
-        st.title("Advanced Banking System")
-        st.subheader("Login")
-        
-        # Authentication component
-        login_result = authenticate_user()
-        
-        if login_result:
-            st.session_state.authenticated = True
-            st.success("Login Successful!")
-            st.experimental_rerun()
-    
-    # Main Application
-    if st.session_state.authenticated:
-        # Create sidebar for navigation
-        page = create_sidebar()
-        
-        # Render appropriate page based on sidebar selection
-        if page == "Dashboard":
-            render_dashboard()
-        elif page == "Transactions":
-            render_transactions()
-        elif page == "Account Management":
-            render_account_management()
-        elif page == "Support Tickets":
-            render_support_tickets()
-        
-        # Logout functionality
-        if st.sidebar.button("Logout"):
-            st.session_state.authenticated = False
-            st.experimental_rerun()
+    """
+    Entry point for the banking application
+    """
+    try:
+        app = BankingApp()
+        app.run()
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
